@@ -14,39 +14,37 @@ const device = new escpos.USB();
 const app = express();
 
 app.use(cors());
-
 app.use(express.json());
 
+let ticketData;
+
 app.post("/print", (req, res) => {
-  console.log("Data from request: ", req.body);
-  const { sale } = req.body;
-
-  //Download image from url
-  downloadImage(sale.image, sale);
+  ticketData = req.body.sale;
+  downloadImage(ticketData.header[0].image);
+  res.send("Ticket enviado a la impresora");
 });
-
 app.get("/printers", (req, res) => {
   const devices = USB.findPrinter();
-  console.log(devices);
   res.send(devices);
 });
 
 app.listen(8080, () => {
-  console.log("Server running on port 8080");
+  console.log("Servidor iniciado no cierres esta ventana");
 });
 
 //Download image from url
-const downloadImage = (url, sale) => {
-  request("https://web.somosoliver.com/static/media/oliver_logo.68c261fd.png")
+const downloadImage = (url) => {
+  request(
+    url || "https://web.somosoliver.com/static/media/oliver_logo.68c261fd.png"
+  )
     .pipe(fs.createWriteStream("image.png"))
     .on("close", () => {
-      console.log("Image downloaded");
-      resizeImage(sale);
+      resizeImage();
     });
 };
 
 //Resize image
-const resizeImage = (sale) =>
+const resizeImage = () =>
   sharp("image.png")
     .resize(150)
     .toFile("resized.png", (err, info) => {
@@ -58,15 +56,13 @@ const resizeImage = (sale) =>
         if (err) {
           console.log(err);
         }
-        console.log("Original image deleted");
       });
-      console.log(info);
-      printImage(sale);
+      printTicket(ticketData);
     });
 
 //Print image
-const printImage = (sale) => {
-  const options = { encoding: "UTF8" /* default */ };
+const printTicket = (sale) => {
+  const options = { encoding: "UTF8" };
 
   escpos.Image.load("resized.png", function (image) {
     device.open(async (err) => {
@@ -76,11 +72,13 @@ const printImage = (sale) => {
       const printer = new escpos.Printer(device, options);
 
       printer
-        .font("a")
-        .align("lt")
+        .align("ct")
         .image(image)
         .then(() => {
           printer
+            .feed()
+            .align("lt")
+            .font("a")
             .text(sale.header[0].business_address)
             .text(`Tel: ${sale.header[0].business_phone}`)
             .text(

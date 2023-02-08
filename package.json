@@ -17,5 +17,14 @@
   },
   "scripts": {
     "postinstall": "patch-package"
+  },
+  "bin": "index.js",
+  "pkg": {
+    "outputPath": "dist",
+    "assets": [
+      "node_modules/sharp/**",
+      "node_modules/usb/*",
+      "node_modules/usb/**/*"
+    ]
   }
 }
